@@ -3,6 +3,7 @@ from flask_cors import CORS
 import face_recognition
 import os
 import datetime
+import numpy as np
 
 app = Flask(__name__)
 CORS(app)
@@ -23,10 +24,12 @@ def load_known_faces():
             image = face_recognition.load_image_file(path)
             face_encs = face_recognition.face_encodings(image)
             if face_encs:
-                encodings.append(face_encs[0])
+                encodings.append(np.array(face_encs[0]))  # Convert to numpy array
                 emp_id = os.path.splitext(filename)[0]
                 employee_ids.append(emp_id)
-    return encodings, employee_ids
+    if encodings:
+        return np.array(encodings), employee_ids
+    return np.empty((0, 128)), employee_ids  # Empty array if no known faces
 
 # Check if employee already marked today
 def is_already_marked(emp_id):
@@ -57,13 +60,16 @@ def recognize_face():
     if not unknown_encodings:
         return jsonify({'status': 'failed', 'message': 'No face detected'}), 200
 
+    unknown_enc = np.array(unknown_encodings[0])
     known_encodings, employee_ids = load_known_faces()
-    matches = face_recognition.compare_faces(known_encodings, unknown_encodings[0], tolerance=0.5)
-    face_distances = face_recognition.face_distance(known_encodings, unknown_encodings[0:1])
 
-    best_match_index = None
-    if face_distances.any():
-        best_match_index = face_distances.argmin()
+    if known_encodings.size == 0:
+        return jsonify({'status': 'failed', 'message': 'No known faces available'}), 200
+
+    matches = face_recognition.compare_faces(known_encodings, unknown_enc, tolerance=0.5)
+    face_distances = face_recognition.face_distance(known_encodings, unknown_enc)
+
+    best_match_index = np.argmin(face_distances) if len(face_distances) > 0 else None
 
     if best_match_index is not None and matches[best_match_index]:
         emp_id = employee_ids[best_match_index]
