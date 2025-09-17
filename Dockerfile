@@ -17,8 +17,13 @@ WORKDIR /app
 # Copy project files
 COPY . /app
 
+# Create known_faces directory and attendance log
+RUN mkdir -p /app/known_faces \
+    && touch /app/attendance.csv \
+    && chmod -R 777 /app
+
 # Install Python dependencies including gunicorn
-RUN pip install -r requirements.txt gunicorn
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
 # Expose port
 EXPOSE 5000
