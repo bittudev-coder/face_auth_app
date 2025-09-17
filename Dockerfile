@@ -5,20 +5,23 @@ RUN apt-get update && apt-get install -y \
     build-essential cmake \
     libopenblas-dev liblapack-dev \
     libx11-dev libgtk-3-dev \
-    libboost-python-dev
+    libboost-python-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip
 RUN pip install --upgrade pip
 
-# Copy project files
+# Set working directory
 WORKDIR /app
+
+# Copy project files
 COPY . /app
 
-# Install python dependencies
-RUN pip install -r requirements.txt
+# Install Python dependencies including gunicorn
+RUN pip install -r requirements.txt gunicorn
 
 # Expose port
 EXPOSE 5000
 
-# Run the app
-CMD ["python", "app.py"]
+# Run the app with Gunicorn for production
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
